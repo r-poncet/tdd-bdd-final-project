@@ -159,7 +159,7 @@ class TestProductRoutes(TestCase):
         response = self.client.post(BASE_URL, data={}, content_type="plain/text")
         self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
-        # ----------------------------------------------------------
+    # ----------------------------------------------------------
     # TEST LIST ALL PRODUCTS
     # ----------------------------------------------------------
     def test_list_products(self):
@@ -176,9 +176,72 @@ class TestProductRoutes(TestCase):
             self.assertEqual(Decimal(item["price"]), product.price)
 
     # ----------------------------------------------------------
+    # TEST LIST ALL PRODUCTS WITH FILTERS
+    # ----------------------------------------------------------
+    def test_list_products_with_filters(self):
+        """It should return filtered Products based on query parameters"""
+
+        # Crée plusieurs produits avec différentes caractéristiques
+        products = [
+            ProductFactory(name="Shirt", price=Decimal("10.00"), available=True, category=Category.MALE),
+            ProductFactory(name="Shirt", price=Decimal("20.00"), available=False, category=Category.FEMALE),
+            ProductFactory(name="Pants", price=Decimal("15.00"), available=True, category=Category.MALE),
+        ]
+        # Sauvegarde dans la base via l'endpoint
+        for p in products:
+            response = self.client.post(BASE_URL, json=p.serialize())
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            p.id = response.get_json()["id"]
+
+        # --- Filtrer par name ---
+        response = self.client.get(f"{BASE_URL}?name=Shirt")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), 2)
+        for item in data:
+            self.assertEqual(item["name"], "Shirt")
+
+        # --- Filtrer par category ---
+        response = self.client.get(f"{BASE_URL}?category=MALE")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), 2)
+        for item in data:
+            self.assertEqual(item["category"], "MALE")
+
+        # --- Filtrer par price ---
+        response = self.client.get(f"{BASE_URL}?price=15.00")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(Decimal(data[0]["price"]), Decimal("15.00"))
+
+        # --- Filtrer par availability ---
+        response = self.client.get(f"{BASE_URL}?available=true")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertTrue(all(item["available"] for item in data))
+
+        # --- Combinaison de filtres ---
+        response = self.client.get(f"{BASE_URL}?name=Shirt&category=FEMALE&available=false")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), 1)
+        item = data[0]
+        self.assertEqual(item["name"], "Shirt")
+        self.assertEqual(item["category"], "FEMALE")
+        self.assertFalse(item["available"])
+
+        # --- Filtre invalide category renvoie liste vide ---
+        response = self.client.get(f"{BASE_URL}?category=INVALID")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(data, [])
+
+    # ----------------------------------------------------------
     # TEST READ A PRODUCT
     # ----------------------------------------------------------
-    def test_get_product(self):
+    def test_read_product(self):
         """It should Get a single Product by id"""
         product = self._create_products()[0]
         response = self.client.get(f"{BASE_URL}/{product.id}")
@@ -189,7 +252,7 @@ class TestProductRoutes(TestCase):
         self.assertEqual(data["name"], product.name)
         self.assertEqual(Decimal(data["price"]), product.price)
 
-    def test_get_product_not_found(self):
+    def test_read_product_not_found(self):
         """It should return 404 when Product not found"""
         response = self.client.get(f"{BASE_URL}/9999")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

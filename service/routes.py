@@ -20,7 +20,8 @@ Product Store Service with UI
 """
 from flask import jsonify, request, abort
 from flask import url_for  # noqa: F401 pylint: disable=unused-import
-from service.models import Product
+from decimal import Decimal
+from service.models import Product, Category
 from service.common import status  # HTTP Status Codes
 from . import app
 
@@ -95,10 +96,42 @@ def create_products():
 ######################################################################
 @app.route("/products", methods=["GET"])
 def list_products():
-    """Returns all of the Products"""
-    app.logger.info("Request for product list")
+    """Returns all Products, optionally filtered by name, category, price, available"""
+    app.logger.info("Request for product list with filters: %s", request.args)
 
-    products = Product.all()
+    products_query = Product.query  # start with base query
+
+    # Filter by name
+    name = request.args.get("name")
+    if name:
+        products_query = products_query.filter(Product.name == name)
+
+    # Filter by category
+    category = request.args.get("category")
+    if category:
+        try:
+            category_enum = Category[category.upper()]
+            products_query = products_query.filter(Product.category == category_enum)
+        except KeyError:
+            app.logger.warning("Invalid category filter: %s", category)
+            return jsonify([]), status.HTTP_200_OK  # return empty list if category invalid
+
+    # Filter by price
+    price = request.args.get("price")
+    if price:
+        try:
+            price_value = Decimal(price)
+            products_query = products_query.filter(Product.price == price_value)
+        except:
+            app.logger.warning("Invalid price filter: %s", price)
+
+    # Filter by availability
+    available = request.args.get("available")
+    if available:
+        available_bool = available.lower() in ("true", "1", "yes")
+        products_query = products_query.filter(Product.available == available_bool)
+
+    products = products_query.all()
     results = [product.serialize() for product in products]
 
     app.logger.info("Returning %d products", len(results))
