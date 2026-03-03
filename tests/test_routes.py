@@ -181,19 +181,19 @@ class TestProductRoutes(TestCase):
     def test_list_products_with_filters(self):
         """It should return filtered Products based on query parameters"""
 
-        # Crée plusieurs produits avec différentes caractéristiques
+        # Create multiple products
         products = [
             ProductFactory(name="Shirt", price=Decimal("10.00"), available=True, category=Category.MALE),
             ProductFactory(name="Shirt", price=Decimal("20.00"), available=False, category=Category.FEMALE),
             ProductFactory(name="Pants", price=Decimal("15.00"), available=True, category=Category.MALE),
         ]
-        # Sauvegarde dans la base via l'endpoint
-        for p in products:
-            response = self.client.post(BASE_URL, json=p.serialize())
+        # Save to fake products to database
+        for produ in products:
+            response = self.client.post(BASE_URL, json=produ.serialize())
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-            p.id = response.get_json()["id"]
+            produ.id = response.get_json()["id"]
 
-        # --- Filtrer par name ---
+        # --- Filter by name ---
         response = self.client.get(f"{BASE_URL}?name=Shirt")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.get_json()
@@ -201,7 +201,7 @@ class TestProductRoutes(TestCase):
         for item in data:
             self.assertEqual(item["name"], "Shirt")
 
-        # --- Filtrer par category ---
+        # --- Filter by category ---
         response = self.client.get(f"{BASE_URL}?category=MALE")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.get_json()
@@ -209,20 +209,20 @@ class TestProductRoutes(TestCase):
         for item in data:
             self.assertEqual(item["category"], "MALE")
 
-        # --- Filtrer par price ---
+        # --- Filter by price ---
         response = self.client.get(f"{BASE_URL}?price=15.00")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.get_json()
         self.assertEqual(len(data), 1)
         self.assertEqual(Decimal(data[0]["price"]), Decimal("15.00"))
 
-        # --- Filtrer par availability ---
+        # --- Filter by availability ---
         response = self.client.get(f"{BASE_URL}?available=true")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.get_json()
         self.assertTrue(all(item["available"] for item in data))
 
-        # --- Combinaison de filtres ---
+        # --- Combine filter ---
         response = self.client.get(f"{BASE_URL}?name=Shirt&category=FEMALE&available=false")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.get_json()
@@ -232,7 +232,7 @@ class TestProductRoutes(TestCase):
         self.assertEqual(item["category"], "FEMALE")
         self.assertFalse(item["available"])
 
-        # --- Filtre invalide category renvoie liste vide ---
+        # --- Invalid filter category return empty liste ---
         response = self.client.get(f"{BASE_URL}?category=INVALID")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.get_json()
