@@ -20,7 +20,7 @@ Product Store Service with UI
 """
 from flask import jsonify, request, abort
 from flask import url_for  # noqa: F401 pylint: disable=unused-import
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from service.models import Product, Category
 from service.common import status  # HTTP Status Codes
 from . import app
@@ -122,7 +122,7 @@ def list_products():
         try:
             price_value = Decimal(price)
             products_query = products_query.filter(Product.price == price_value)
-        except:
+        except InvalidOperation:
             app.logger.warning("Invalid price filter: %s", price)
 
     # Filter by availability
