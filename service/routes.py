@@ -104,6 +104,7 @@ def list_products():
     app.logger.info("Returning %d products", len(results))
     return jsonify(results), status.HTTP_200_OK
 
+
 ######################################################################
 # R E A D   A   P R O D U C T
 ######################################################################
@@ -117,6 +118,7 @@ def get_products(product_id):
         abort(status.HTTP_404_NOT_FOUND, f"Product with id '{product_id}' was not found.")
 
     return jsonify(product.serialize()), status.HTTP_200_OK
+
 
 ######################################################################
 # U P D A T E   A   P R O D U C T
@@ -139,6 +141,7 @@ def update_products(product_id):
     product.update()
 
     return jsonify(product.serialize()), status.HTTP_200_OK
+
 
 ######################################################################
 # D E L E T E   A   P R O D U C T
