@@ -86,43 +86,70 @@ def create_products():
 
     message = product.serialize()
 
-    #
-    # Uncomment this line of code once you implement READ A PRODUCT
-    #
-    # location_url = url_for("get_products", product_id=product.id, _external=True)
-    location_url = "/"  # delete once READ is implemented
+    location_url = url_for("get_products", product_id=product.id, _external=True)
     return jsonify(message), status.HTTP_201_CREATED, {"Location": location_url}
 
 
 ######################################################################
 # L I S T   A L L   P R O D U C T S
 ######################################################################
+@app.route("/products", methods=["GET"])
+def list_products():
+    """Returns all of the Products"""
+    app.logger.info("Request for product list")
 
-#
-# PLACE YOUR CODE TO LIST ALL PRODUCTS HERE
-#
+    products = Product.all()
+    results = [product.serialize() for product in products]
+
+    app.logger.info("Returning %d products", len(results))
+    return jsonify(results), status.HTTP_200_OK
 
 ######################################################################
 # R E A D   A   P R O D U C T
 ######################################################################
+@app.route("/products/<int:product_id>", methods=["GET"])
+def get_products(product_id):
+    """Retrieve a single Product"""
+    app.logger.info("Request to retrieve product with id [%s]", product_id)
 
-#
-# PLACE YOUR CODE HERE TO READ A PRODUCT
-#
+    product = Product.find(product_id)
+    if not product:
+        abort(status.HTTP_404_NOT_FOUND, f"Product with id '{product_id}' was not found.")
+
+    return jsonify(product.serialize()), status.HTTP_200_OK
 
 ######################################################################
 # U P D A T E   A   P R O D U C T
 ######################################################################
+@app.route("/products/<int:product_id>", methods=["PUT"])
+def update_products(product_id):
+    """Update an existing Product"""
+    app.logger.info("Request to update product with id [%s]", product_id)
+    check_content_type("application/json")
 
-#
-# PLACE YOUR CODE TO UPDATE A PRODUCT HERE
-#
+    product = Product.find(product_id)
+    if not product:
+        abort(status.HTTP_404_NOT_FOUND, f"Product with id '{product_id}' was not found.")
+
+    data = request.get_json()
+    app.logger.info("Processing: %s", data)
+
+    product.deserialize(data)
+    product.id = product_id
+    product.update()
+
+    return jsonify(product.serialize()), status.HTTP_200_OK
 
 ######################################################################
 # D E L E T E   A   P R O D U C T
 ######################################################################
+@app.route("/products/<int:product_id>", methods=["DELETE"])
+def delete_products(product_id):
+    """Delete a Product"""
+    app.logger.info("Request to delete product with id [%s]", product_id)
 
+    product = Product.find(product_id)
+    if product:
+        product.delete()
 
-#
-# PLACE YOUR CODE TO DELETE A PRODUCT HERE
-#
+    return "", status.HTTP_204_NO_CONTENT

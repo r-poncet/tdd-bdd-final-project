@@ -104,3 +104,93 @@ class TestProductModel(unittest.TestCase):
     #
     # ADD YOUR TEST CASES HERE
     #
+
+    def test_update_a_product(self):
+        """It should update a product in the database"""
+        product = ProductFactory()
+        product.id = None
+        product.create()
+        new_name = "Updated Product"
+        product.name = new_name
+        product.update()
+        updated_product = Product.find(product.id)
+        self.assertEqual(updated_product.name, new_name)
+
+    def test_delete_a_product(self):
+        """It should remove a product from the database"""
+        product = ProductFactory()
+        product.id = None
+        product.create()
+        product_id = product.id
+        product.delete()
+        self.assertIsNone(Product.find(product_id))
+
+    def test_serialize_a_product(self):
+        """It should serialize a product to a dictionary"""
+        product = ProductFactory()
+        product_dict = product.serialize()
+        self.assertEqual(product_dict["name"], product.name)
+        self.assertEqual(product_dict["description"], product.description)
+        self.assertEqual(Decimal(product_dict["price"]), product.price)
+        self.assertEqual(product_dict["available"], product.available)
+        self.assertEqual(product_dict["category"], product.category.name)
+
+    def test_deserialize_a_product(self):
+        """It should deserialize a product from a dictionary"""
+        data = {
+            "name": "Deserialized Product",
+            "description": "A product from dict",
+            "price": "19.99",
+            "available": True,
+            "category": "FOOD"
+        }
+        product = Product()
+        product.deserialize(data)
+        self.assertEqual(product.name, data["name"])
+        self.assertEqual(product.description, data["description"])
+        self.assertEqual(product.price, Decimal(data["price"]))
+        self.assertEqual(product.available, data["available"])
+        self.assertEqual(product.category.name, data["category"])
+
+    def test_find_product_by_id(self):
+        """It should find a product by its ID"""
+        product = ProductFactory()
+        product.id = None
+        product.create()
+        found = Product.find(product.id)
+        self.assertIsNotNone(found)
+        self.assertEqual(found.id, product.id)
+
+    def test_find_product_by_name(self):
+        """It should find products by name"""
+        product = ProductFactory(name="UniqueName")
+        product.id = None
+        product.create()
+        results = Product.find_by_name("UniqueName").all()
+        self.assertGreaterEqual(len(results), 1)
+        self.assertEqual(results[0].name, "UniqueName")
+
+    def test_find_product_by_price(self):
+        """It should find products by price"""
+        product = ProductFactory(price=99.99)
+        product.id = None
+        product.create()
+        results = Product.find_by_price(Decimal("99.99")).all()
+        self.assertGreaterEqual(len(results), 1)
+        self.assertEqual(results[0].price, Decimal("99.99"))
+
+    def test_find_product_by_availability(self):
+        """It should find products by availability"""
+        product = ProductFactory(available=True)
+        product.id = None
+        product.create()
+        results = Product.find_by_availability(True).all()
+        self.assertIn(product, results)
+
+    def test_find_product_by_category(self):
+        """It should find products by category"""
+        product = ProductFactory(category=Category.TOOLS)
+        product.id = None
+        product.create()
+        results = Product.find_by_category(Category.TOOLS).all()
+        self.assertIn(product, results)
