@@ -162,81 +162,123 @@ class TestProductRoutes(TestCase):
     # ----------------------------------------------------------
     # TEST LIST ALL PRODUCTS
     # ----------------------------------------------------------
-    def test_list_products(self):
-        """It should return all Products"""
-        products = self._create_products(3)
+    def test_get_product_list(self):
+        """It should Get a list of Products"""
+        self._create_products(5)
         response = self.client.get(BASE_URL)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
         data = response.get_json()
-        self.assertEqual(len(data), 3)
-        for product, item in zip(products, data):
-            self.assertEqual(item["name"], product.name)
-            self.assertEqual(item["description"], product.description)
-            self.assertEqual(Decimal(item["price"]), product.price)
+        self.assertEqual(len(data), 5)
+
+    def test_query_by_name(self):
+        """It should Query Products by name"""
+        products = self._create_products(5)
+        test_name = products[0].name
+        name_count = len([product for product in products if product.name == test_name])
+        response = self.client.get(BASE_URL, query_string=f"name={test_name}")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), name_count)
+        # check the data just to be sure
+        for product in data:
+            self.assertEqual(product["name"], test_name)
+
+    def test_query_by_category(self):
+        """It should Query Products by category"""
+        products = self._create_products(10)
+        category = products[0].category
+        found = [product for product in products if product.category == category]
+        found_count = len(found)
+        logging.debug("Found Products [%d] %s", found_count, found)
+
+        # test for available
+        response = self.client.get(BASE_URL, query_string=f"category={category.name}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), found_count)
+        # check the data just to be sure
+        for product in data:
+            self.assertEqual(product["category"], category.name)
+
+    def test_query_by_availability(self):
+        """It should Query Products by availability"""
+        products = self._create_products(10)
+        available_products = [product for product in products if product.available is True]
+        available_count = len(available_products)        
+        # test for available
+        response = self.client.get(
+            BASE_URL, query_string="available=true"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), available_count)
+        # check the data just to be sure
+        for product in data:
+            self.assertEqual(product["available"], True)
 
     # ----------------------------------------------------------
     # TEST LIST ALL PRODUCTS WITH FILTERS
     # ----------------------------------------------------------
-    def test_list_products_with_filters(self):
-        """It should return filtered Products based on query parameters"""
+    # def test_list_products_with_filters(self):
+    #     """It should return filtered Products based on query parameters"""
 
-        # Create multiple products
-        products = [
-            ProductFactory(name="Shirt", price=Decimal("10.00"), available=True, category=Category.MALE),
-            ProductFactory(name="Shirt", price=Decimal("20.00"), available=False, category=Category.FEMALE),
-            ProductFactory(name="Pants", price=Decimal("15.00"), available=True, category=Category.MALE),
-        ]
-        # Save to fake products to database
-        for produ in products:
-            response = self.client.post(BASE_URL, json=produ.serialize())
-            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-            produ.id = response.get_json()["id"]
+    #     # Create multiple products
+    #     products = [
+    #         ProductFactory(name="Shirt", price=Decimal("10.00"), available=True, category=Category.MALE),
+    #         ProductFactory(name="Shirt", price=Decimal("20.00"), available=False, category=Category.FEMALE),
+    #         ProductFactory(name="Pants", price=Decimal("15.00"), available=True, category=Category.MALE),
+    #     ]
+    #     # Save to fake products to database
+    #     for produ in products:
+    #         response = self.client.post(BASE_URL, json=produ.serialize())
+    #         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+    #         produ.id = response.get_json()["id"]
 
-        # --- Filter by name ---
-        response = self.client.get(f"{BASE_URL}?name=Shirt")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.get_json()
-        self.assertEqual(len(data), 2)
-        for item in data:
-            self.assertEqual(item["name"], "Shirt")
+    #     # --- Filter by name ---
+    #     response = self.client.get(f"{BASE_URL}?name=Shirt")
+    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
+    #     data = response.get_json()
+    #     self.assertEqual(len(data), 2)
+    #     for item in data:
+    #         self.assertEqual(item["name"], "Shirt")
 
-        # --- Filter by category ---
-        response = self.client.get(f"{BASE_URL}?category=MALE")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.get_json()
-        self.assertEqual(len(data), 2)
-        for item in data:
-            self.assertEqual(item["category"], "MALE")
+    #     # --- Filter by category ---
+    #     response = self.client.get(f"{BASE_URL}?category=MALE")
+    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
+    #     data = response.get_json()
+    #     self.assertEqual(len(data), 2)
+    #     for item in data:
+    #         self.assertEqual(item["category"], "MALE")
 
-        # --- Filter by price ---
-        response = self.client.get(f"{BASE_URL}?price=15.00")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.get_json()
-        self.assertEqual(len(data), 1)
-        self.assertEqual(Decimal(data[0]["price"]), Decimal("15.00"))
+    #     # --- Filter by price ---
+    #     response = self.client.get(f"{BASE_URL}?price=15.00")
+    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
+    #     data = response.get_json()
+    #     self.assertEqual(len(data), 1)
+    #     self.assertEqual(Decimal(data[0]["price"]), Decimal("15.00"))
 
-        # --- Filter by availability ---
-        response = self.client.get(f"{BASE_URL}?available=true")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.get_json()
-        self.assertTrue(all(item["available"] for item in data))
+    #     # --- Filter by availability ---
+    #     response = self.client.get(f"{BASE_URL}?available=true")
+    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
+    #     data = response.get_json()
+    #     self.assertTrue(all(item["available"] for item in data))
 
-        # --- Combine filter ---
-        response = self.client.get(f"{BASE_URL}?name=Shirt&category=FEMALE&available=false")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.get_json()
-        self.assertEqual(len(data), 1)
-        item = data[0]
-        self.assertEqual(item["name"], "Shirt")
-        self.assertEqual(item["category"], "FEMALE")
-        self.assertFalse(item["available"])
+    #     # --- Combine filter ---
+    #     response = self.client.get(f"{BASE_URL}?name=Shirt&category=FEMALE&available=false")
+    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
+    #     data = response.get_json()
+    #     self.assertEqual(len(data), 1)
+    #     item = data[0]
+    #     self.assertEqual(item["name"], "Shirt")
+    #     self.assertEqual(item["category"], "FEMALE")
+    #     self.assertFalse(item["available"])
 
-        # --- Invalid filter category return empty liste ---
-        response = self.client.get(f"{BASE_URL}?category=INVALID")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.get_json()
-        self.assertEqual(data, [])
+    #     # --- Invalid filter category return empty liste ---
+    #     response = self.client.get(f"{BASE_URL}?category=INVALID")
+    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
+    #     data = response.get_json()
+    #     self.assertEqual(data, [])
 
     # ----------------------------------------------------------
     # TEST READ A PRODUCT

@@ -184,3 +184,66 @@ class TestProductModel(unittest.TestCase):
         results = Product.find_by_availability(True).all()
         self.assertTrue(len(results) >= 1)
         self.assertTrue(results[0].available)
+
+    def test_serialize_a_product(self):
+        """It should serialize a Product"""
+        product = ProductFactory()
+        product.id = None
+        product.create()
+        data = product.serialize()
+        self.assertEqual(data["name"], product.name)
+        self.assertEqual(data["description"], product.description)
+        self.assertEqual(data["available"], product.available)
+        self.assertEqual(data["category"], product.category.name)
+
+    def test_deserialize_a_product(self):
+        """It should deserialize a Product"""
+        data = {
+            "name": "Hammer",
+            "description": "Steel hammer",
+            "price": "10.50",
+            "available": True,
+            "category": "TOOLS"
+        }
+        product = Product()
+        product.deserialize(data)
+        self.assertEqual(product.name, "Hammer")
+        self.assertEqual(product.category, Category.TOOLS)
+
+    def test_deserialize_missing_field(self):
+        """It should raise an error when a field is missing"""
+        product = Product()
+        data = {"name": "BadProduct"}
+        with self.assertRaises(Exception):
+            product.deserialize(data)
+
+    def test_deserialize_bad_boolean(self):
+        """It should raise an error for invalid boolean"""
+        product = Product()
+        data = {
+            "name": "Hammer",
+            "description": "Steel hammer",
+            "price": "10.50",
+            "available": "yes",
+            "category": "TOOLS"
+        }
+        with self.assertRaises(Exception):
+            product.deserialize(data)
+
+    def test_find_product_by_price(self):
+        """It should find a product by price"""
+        product = ProductFactory(price=Decimal("19.99"))
+        product.id = None
+        product.create()
+        results = Product.find_by_price(Decimal("19.99")).all()
+        self.assertTrue(len(results) >= 1)
+        self.assertEqual(results[0].price, Decimal("19.99"))
+
+    def test_find_product_by_price_string(self):
+        """It should find a product by price when price is string"""
+        product = ProductFactory(price=Decimal("5.55"))
+        product.id = None
+        product.create()
+        results = Product.find_by_price("5.55").all()
+        self.assertTrue(len(results) >= 1)
+        self.assertEqual(results[0].price, Decimal("5.55"))
