@@ -96,46 +96,34 @@ def create_products():
 ######################################################################
 @app.route("/products", methods=["GET"])
 def list_products():
-    """Returns all Products, optionally filtered by name, category, price, available"""
-    app.logger.info("Request for product list with filters: %s", request.args)
+    """Returns a list of Products"""
+    app.logger.info("Request to list Products...")
 
-    products_query = Product.query  # start with base query
-
-    # Filter by name
+    products = []
     name = request.args.get("name")
-    if name:
-        products_query = products_query.filter(Product.name == name)
-
-    # Filter by category
     category = request.args.get("category")
-    if category:
-        try:
-            category_enum = Category[category.upper()]
-            products_query = products_query.filter(Product.category == category_enum)
-        except KeyError:
-            app.logger.warning("Invalid category filter: %s", category)
-            return jsonify([]), status.HTTP_200_OK  # return empty list if category invalid
-
-    # Filter by price
-    price = request.args.get("price")
-    if price:
-        try:
-            price_value = Decimal(price)
-            products_query = products_query.filter(Product.price == price_value)
-        except InvalidOperation:
-            app.logger.warning("Invalid price filter: %s", price)
-
-    # Filter by availability
     available = request.args.get("available")
-    if available:
-        available_bool = available.lower() in ("true", "1", "yes")
-        products_query = products_query.filter(Product.available == available_bool)
 
-    products = products_query.all()
+    if name:
+        app.logger.info("Find by name: %s", name)
+        products = Product.find_by_name(name)
+    elif category:
+        app.logger.info("Find by category: %s", category)
+        # create enum from string
+        category_value = getattr(Category, category.upper())
+        products = Product.find_by_category(category_value)
+    elif available:
+        app.logger.info("Find by available: %s", available)
+        # create bool from string
+        available_value = available.lower() in ["true", "yes", "1"]
+        products = Product.find_by_availability(available_value)
+    else:
+        app.logger.info("Find all")
+        products = Product.all()
+
     results = [product.serialize() for product in products]
-
-    app.logger.info("Returning %d products", len(results))
-    return jsonify(results), status.HTTP_200_OK
+    app.logger.info("[%s] Products returned", len(results))
+    return results, status.HTTP_200_OK
 
 
 ######################################################################
