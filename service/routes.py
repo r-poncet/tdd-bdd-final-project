@@ -18,7 +18,6 @@
 """
 Product Store Service with UI
 """
-from decimal import Decimal, InvalidOperation
 from flask import jsonify, request, abort
 from flask import url_for  # noqa: F401 pylint: disable=unused-import
 from service.models import Product, Category
